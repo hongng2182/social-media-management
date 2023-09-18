@@ -34,5 +34,16 @@ const clearAccessCode = (phoneNumber) => {
   ref.set({ accessCode: "" })
 }
 
+const saveFacebookManagedPages = async (phoneNumber, facebookPagesData) => {
+  const ref = db.ref(`phoneNumber/${phoneNumber}`);
+  ref.set({ facebookPagesData })
+}
 
-module.exports = { saveAccessCode, getAccessCode, clearAccessCode }
+const getPageAccessToken = async (phoneNumber, pageId) => {
+  const ref = db.ref(`phoneNumber/${phoneNumber}`);
+  const value = await ref.once("value");
+  return value.val().facebookPagesData[pageId].access_token
+}
+
+
+module.exports = { saveAccessCode, getAccessCode, clearAccessCode, saveFacebookManagedPages, getPageAccessToken }

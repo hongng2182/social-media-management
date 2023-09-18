@@ -5,5 +5,15 @@ const generateNewAccesCode = () => {
   return accessCode;
 }
 
+// Tranform pages array data to object with keys = pageId
+function transformArrayToObject(array) {
+  const result = {};
+  for (const obj of array) {
+    const { id, name, access_token } = obj
+    result[id] = { name, access_token };
+  }
+  return result;
+}
 
-module.exports = { generateNewAccesCode }
+
+module.exports = { generateNewAccesCode, transformArrayToObject }

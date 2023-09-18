@@ -1,6 +1,6 @@
 import React from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
-import { Home } from './components';
+import { Home, Dashboard } from './components';
 import './App.css';
 
 function App() {
@@ -9,7 +9,7 @@ function App() {
       <Routes>
         <Route path="/">
           <Route index element={<Home />} />
-          {/* <Route path="dashboard" element={<Dashboard />} /> */}
+          <Route path="dashboard" element={<Dashboard />} />
           {/* <Route path="*" element={<NoPage />} /> */}
         </Route>
       </Routes>

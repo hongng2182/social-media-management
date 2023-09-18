@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useMutation } from '@tanstack/react-query';
 import PhoneInput from 'react-phone-input-2';
 import 'react-phone-input-2/lib/style.css';
@@ -7,6 +8,8 @@ import toast from 'react-hot-toast';
 import { endpoint } from '../utils/constant';
 
 function Home() {
+  const navigate = useNavigate();
+
   const [phoneNumber, setPhoneNumber] = useState('');
   const [accessCode, setAccessCode] = useState('');
   const [showVerify, setshowVerify] = useState(true);
@@ -63,7 +66,8 @@ function Home() {
     },
     onSuccess: () => {
       toast.success('Welcome to Social App');
-      // Navigate to /dashboard
+      localStorage.setItem('social-phone-number', phoneNumber);
+      return navigate("/dashboard");
     },
     onError: (error: Error) => {
       console.log(error);
@@ -74,7 +78,6 @@ function Home() {
   const handleSendVerificationCode = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!phoneNumber) return;
-    console.log(phoneNumber);
     mutate(phoneNumber);
   };
 

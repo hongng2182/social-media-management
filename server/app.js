@@ -22,6 +22,7 @@ app.use(bodyParser.json())
 // Routes
 
 app.use('/', require('./routes/index'));
+app.use('/', require('./routes/dashboard'));
 
 
 
