@@ -1,4 +1,4 @@
-const { saveFacebookManagedPages, getPageAccessToken } = require('../config/firebase')
+const { saveFacebookManagedPages, getPageAccessToken, saveFavoritePosts, getFavoritePosts } = require('../config/firebase')
 const { transformArrayToObject } = require('../utils')
 
 const express = require("express");
@@ -161,5 +161,63 @@ router.post('/createScheduledPostFacebook', async (req, res) => {
   }
 
 })
+
+router.get('/getPostFacebook', async (req, res) => {
+  // Desctructure params
+  const { phoneNumber } = req.query
+  const pageId = "143794288806196"
+
+  // Retrieve db to get pageAccesstoken of phoneNumber
+  const pageAccessToken = await getPageAccessToken(phoneNumber, pageId)
+  console.log('pageAccessToken', pageAccessToken)
+
+  // Call API to get FB posts
+  const endpoint = `https://graph.facebook.com/${pageId}/feed?fields=is_published,id,message,attachments{url,media_type,unshimmed_url, media},created_time,from,sheduled_publish_time&access_token=${pageAccessToken}`
+  const data = await fetch(endpoint, {
+    method: 'GET',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+  });
+
+  const result = await data.json();
+  console.log('Facebook posts data', result)
+  // if api call success 
+  if (data.ok) {
+    // return { success: true }
+    res.status(200).json({
+      success: true,
+      posts: result.data
+    })
+  }
+})
+
+router.post('/likeSocialPost', async (req, res) => {
+  // Desctructure 
+  const { social_post_id, phone_number } = req.body
+
+  // Save to db at favorite_social_post
+  saveFavoritePosts(phone_number, social_post_id)
+
+ // return success
+  res.status(200).json({
+    success: true,
+  })
+
+})
+
+
+router.get('/getFavoriterPosts', async (req, res) => {
+  // Desctructure params
+  const { phoneNumber } = req.query
+  // Retrieve db to get favorite_social_post
+  const favorite_posts = await getFavoritePosts(phoneNumber)
+  // Success return: { favorite_social_post: [social_post_id] }
+  res.status(200).json({
+    favorite_social_post: favorite_posts
+  })
+
+})
+
 
 module.exports = router;

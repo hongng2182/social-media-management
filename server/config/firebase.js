@@ -35,8 +35,8 @@ const clearAccessCode = (phoneNumber) => {
 }
 
 const saveFacebookManagedPages = async (phoneNumber, facebookPagesData) => {
-  const ref = db.ref(`phoneNumber/${phoneNumber}`);
-  ref.set({ facebookPagesData })
+  const ref = db.ref(`phoneNumber/${phoneNumber}/facebookPagesData`);
+  ref.set(facebookPagesData)
 }
 
 const getPageAccessToken = async (phoneNumber, pageId) => {
@@ -45,5 +45,25 @@ const getPageAccessToken = async (phoneNumber, pageId) => {
   return value.val().facebookPagesData[pageId].access_token
 }
 
+const saveFavoritePosts = async (phoneNumber, social_post_id) => {
+  const ref = db.ref(`phoneNumber/${phoneNumber}/favorite_social_post`);
+  const value = await ref.once("value");
+  const currentPosts = value.val()  // [] or null
+  if (!currentPosts) {
+    ref.set([social_post_id])
+  } else {
+    // Don't save if post_id has existed
+    if (currentPosts.includes(social_post_id)) {
+      return
+    }
+    ref.set([...currentPosts, social_post_id])
+  }
+}
 
-module.exports = { saveAccessCode, getAccessCode, clearAccessCode, saveFacebookManagedPages, getPageAccessToken }
+const getFavoritePosts = async (phoneNumber) => {
+  const ref = db.ref(`phoneNumber/${phoneNumber}/favorite_social_post`);
+  const value = await ref.once("value");
+  return value.val()
+}
+
+module.exports = { saveAccessCode, getAccessCode, clearAccessCode, saveFacebookManagedPages, getPageAccessToken, saveFavoritePosts, getFavoritePosts }

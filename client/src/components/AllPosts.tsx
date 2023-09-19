@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { useMutation } from '@tanstack/react-query';
+import { useMutation, useQuery } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import Button from '@mui/material/Button';
 import TextField from '@mui/material/TextField';
@@ -13,13 +13,20 @@ import InputLabel from '@mui/material/InputLabel';
 import Typography from '@mui/material/Typography';
 import FormControl from '@mui/material/FormControl';
 import Select from '@mui/material/Select';
+import Stack from '@mui/material/Stack';
 import { endpoint } from '../utils/constant';
 import { getFacebookLoginStatus } from '../utils/facebook-login-sdk';
+import { useDashboardState } from '../context';
+import PostCard from './PostCard';
+import { FacebookPostsResponse, PostDetailsWithLike } from '../types';
 
 
 function AllPosts() {
+  const { state: { userManagedPages } } = useDashboardState()
   // Dialogue state
   const [open, setOpen] = useState(false);
+  const [posts, setPosts] = useState<PostDetailsWithLike[]>([]);
+
 
   const handleClose = () => {
     setOpen(false);
@@ -29,7 +36,6 @@ function AllPosts() {
   const [pageId, setPageId] = useState('');
   const [message, setMessage] = useState('');
   const [link, setLink] = useState('');
-  const [pages, setPages] = useState<{ id: string, name: string }[]>([]);
 
   // Schedule Post state 
   const [scheduleOption, setScheduleOption] = useState<'now' | 'schedule'>('now');
@@ -42,33 +48,7 @@ function AllPosts() {
   }
 
   // API call
-  const { mutate: userPagesMutate } = useMutation({
-    mutationKey: ['get-user-pages'],
-    mutationFn: async ({ userID, accessToken, phoneNumber }: { userID: string, accessToken: string, phoneNumber: string }) => {
-      const data = await fetch(`${endpoint}/getUserPages`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ userID, accessToken, phoneNumber }),
-      });
-
-      const result = await data.json();
-
-      if (!data.ok) throw new Error(result.message);
-
-      console.log(result);
-      return result;
-    },
-    onSuccess: (data) => {
-      // Save user pages to pages state
-      setPages(data.pages)
-    },
-    onError: (error: Error) => {
-      console.log('error', error);
-      toast.error(error.message);
-    },
-  });
+  
 
   const handleShowDialogue = () => {
     // check userlogin Status
@@ -76,14 +56,10 @@ function AllPosts() {
       console.log(response)
       // If user has login
       if (response.status === "connected") {
-        // get phoneNumber in localStorage
-        const phoneNumber = localStorage.getItem('social-phone-number')
-        if (!phoneNumber) return
-        const { userID, accessToken } = response.authResponse;
-        // call api to /getUserPages to get user's FB managed pages to render in dialogue
-        userPagesMutate({ userID, accessToken, phoneNumber })
         // showDialogue
         setOpen(true)
+      } else {
+        toast.error('Please connect to Facebook app to create post!')
       }
     })
   }
@@ -168,10 +144,72 @@ function AllPosts() {
       schedulePostMutate({ pageId, phoneNumber, message, link, schedulePublishTime })
   }
 
+  const { isLoading } = useQuery<any, Error, [FacebookPostsResponse, { favorite_social_post : string[]}], string[]>({
+    queryKey: ['get-fb-posts'],
+    queryFn: async () => {
+      const phoneNumber = localStorage.getItem('social-phone-number')
+      // Create promise to get facebook posts
+      const getPostFb = fetch(`${endpoint}/getPostFacebook?phoneNumber=${phoneNumber}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        }
+      });
+      // Create promise to get favorite posts ids
+      const getFavoritePost = fetch(`${endpoint}/getFavoriterPosts?phoneNumber=${phoneNumber}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        }
+      });
+      // Wait for all promises to resolve
+      const data = await Promise.all([getPostFb, getFavoritePost])
+      const resolvedData = await Promise.all(data.map((res) => res.json()));
+
+      console.log(resolvedData);
+      return resolvedData;
+
+    },
+    onSuccess: (data) => {
+      // [{success, posts: []}, {favorite_social_post}] = data
+      const [postsResponse, favoritePostsResponse] = data
+      const fav_posts_set = new Set(favoritePostsResponse.favorite_social_post)
+      // merge to get a list of posts with favorite field
+      const fbPostsWithLike = postsResponse.posts.map((post) => ({ ...post, is_favorite: fav_posts_set.has(post.id) }))
+      // set posts to state
+      setPosts(fbPostsWithLike)
+    },
+    onError: (error: Error) => {
+      console.log('error', error);
+    },
+    enabled: userManagedPages.length > 0,
+    refetchOnWindowFocus: false,
+  })
 
   return (
     <div>
-      <Button variant="contained" onClick={handleShowDialogue}>Create Post Facebook</Button>
+      <Stack
+        justifyContent="space-between"
+        direction={'row'}
+        spacing={2}
+      >
+        Search
+        <Button variant="contained" onClick={handleShowDialogue}>Create Post Facebook</Button>
+      </Stack>
+      {/* POSTS */}
+      {isLoading && 'Loading'}
+      <Stack
+        useFlexGap flexWrap="wrap"
+        justifyContent="space-around"
+        direction={{ xs: 'column', sm: 'row' }}
+        spacing={2}
+      >
+        {posts.length > 0 && posts?.map(post =>
+          <PostCard key={post.id} postData={post} />
+        )}
+      </Stack>
+
+      {/* DIALOGUE */}
       <div>
         <Dialog open={open} onClose={handleClose}>
           <DialogTitle>Create/ Schedule Facebook Post</DialogTitle>
@@ -179,7 +217,7 @@ function AllPosts() {
             <DialogContentText style={{ marginBottom: "20px" }}>
               Enter fields below to create/ schedule your facebook post.
             </DialogContentText>
-            {pages.length > 0 &&
+            {userManagedPages.length > 0 &&
               <FormControl sx={{ my: 1, minWidth: 200 }}>
                 <InputLabel id="demo-simple-select-label">Choose Pages</InputLabel>
                 <Select
@@ -188,7 +226,7 @@ function AllPosts() {
                   label="Choose Pages"
                   inputProps={{ 'aria-label': 'Without label' }}
                 >
-                  {pages.map((page) => <MenuItem key={page.id} value={page.id}>{page.name}</MenuItem>)}
+                  {userManagedPages.map((page) => <MenuItem key={page.id} value={page.id}>{page.name}</MenuItem>)}
                 </Select>
               </FormControl>}
             <TextField
