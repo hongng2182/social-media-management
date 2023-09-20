@@ -19,25 +19,25 @@
 
 ## Screenshots
 
-##### Login Page
+#### Login Page
 ![](screenshots/login-page.jpg)
 ![](screenshots/login-page-2.jpg)
 
-##### All posts
+#### All posts
 ![](screenshots/all-posts.jpg)
 
-##### Accounts
+#### Accounts
 ![](screenshots/accounts.jpg)
 
-##### Create/Schedule Post modal
+#### Create/Schedule Post modal
 ![](screenshots/create-post-modal.jpg)
-##### Favorite Post
+#### Favorite Post
 ![](screenshots/filter-fav-post-only.jpg)
 
 
 ## Link to Facebook pages
-Learning Korean: https://www.facebook.com/profile.php?id=61551126458478
-Minimalism Lifestyle : https://www.facebook.com/profile.php?id=61551628100656
+- Learning Korean: https://www.facebook.com/profile.php?id=61551126458478
+- Minimalism Lifestyle : https://www.facebook.com/profile.php?id=61551628100656
 
 ## Unfinished features
 For me, this coding challenge was quite large, and exciting at the same time. Unfortunately, I could not finish some functions and features within 5-day timeframe, the list is below: 
@@ -51,18 +51,18 @@ For me, this coding challenge was quite large, and exciting at the same time. Un
 
 
 ## Projects diagram
-##### /CreateNewAccessCode & /ValidateAccessCode
+#### /CreateNewAccessCode & /ValidateAccessCode
 ![](screenshots/diagram/login_with_sms.png)
-##### /loginFacebook
+#### /loginFacebook
 
 ![](screenshots/diagram/facebook_connect.png)
-##### /createPostFacebook & /createScheduledPostFacebook
+#### /createPostFacebook & /createScheduledPostFacebook
 ![](screenshots/diagram/create_schedule_fb_post.jpg)
 
-##### /getPostFacebook & getFavoriterPosts
+#### /getPostFacebook & getFavoriterPosts
 
 ![](screenshots/diagram/get_facebook_posts.jpg)
-##### /likeSocialPost
+#### /likeSocialPost
 ![](screenshots/diagram/like-social-post.jpg)
 
 
