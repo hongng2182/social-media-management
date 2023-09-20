@@ -28,7 +28,7 @@ router.post('/CreateNewAccessCode', async (req, res) => {
     // send SMS message
     client.messages
         .create({
-            body: `Your Social Media Management App verification code is: ${randomCode}`,
+            body: `Your SOCIALSYNC verification code is: ${randomCode}`,
             from: process.env.TWILIO_PHONE_NUMBER,
             to: `+${phoneNumber}`
         })

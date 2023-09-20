@@ -1,59 +1,50 @@
-import React, { useState } from 'react'
-import { useMutation, useQuery } from '@tanstack/react-query';
+import React, { useState, useRef } from 'react'
+import { useQuery } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import Button from '@mui/material/Button';
 import TextField from '@mui/material/TextField';
-import Dialog from '@mui/material/Dialog';
-import DialogActions from '@mui/material/DialogActions';
-import DialogContent from '@mui/material/DialogContent';
-import DialogContentText from '@mui/material/DialogContentText';
-import DialogTitle from '@mui/material/DialogTitle';
 import MenuItem from '@mui/material/MenuItem';
 import InputLabel from '@mui/material/InputLabel';
-import Typography from '@mui/material/Typography';
 import FormControl from '@mui/material/FormControl';
 import Select from '@mui/material/Select';
 import Stack from '@mui/material/Stack';
-import { endpoint } from '../utils/constant';
-import { getFacebookLoginStatus } from '../utils/facebook-login-sdk';
+import Switch from '@mui/material/Switch';
+import FormGroup from '@mui/material/FormGroup';
+import Grid from '@mui/material/Grid';
+import Box from '@mui/material/Box';
+import FormControlLabel from '@mui/material/FormControlLabel';
+import { getFacebookLoginStatus, getTimeRangeFromOptions } from '../utils';
 import { useDashboardState } from '../context';
 import PostCard from './PostCard';
-import { FacebookPostsResponse, PostDetailsWithLike } from '../types';
+import CreatePostDialogue from './CreatePostDialogue';
+import { FacebookPostsResponse, PostDetailsWithLike, TimeOptions } from '../types';
+import { fetchPostFacebook } from '../apis'
+
 
 
 function AllPosts() {
+  // dashboard context state
   const { state: { userManagedPages } } = useDashboardState()
-  // Dialogue state
+
+  // Dialogue state and handler
   const [open, setOpen] = useState(false);
   const [posts, setPosts] = useState<PostDetailsWithLike[]>([]);
-
 
   const handleClose = () => {
     setOpen(false);
   };
 
-  // Create Post state
+  // Filter state
+  const [searchInput, setSearchInput] = useState('');
   const [pageId, setPageId] = useState('');
-  const [message, setMessage] = useState('');
-  const [link, setLink] = useState('');
+  const [timeOption, setTimeOption] = useState<string>(TimeOptions.allTime);
+  const ref = useRef<PostDetailsWithLike[]>([])
 
-  // Schedule Post state 
-  const [scheduleOption, setScheduleOption] = useState<'now' | 'schedule'>('now');
-  const [schedulePublishTime, setSchedulePublishTime] = useState<string>(Date.now().toString());
 
-  const resetAllFields = () => {
-    setPageId('')
-    setMessage('')
-    setLink('')
-  }
-
-  // API call
-  
-
+  // handle show dialogue when click Create Post button
   const handleShowDialogue = () => {
     // check userlogin Status
     getFacebookLoginStatus().then((response) => {
-      console.log(response)
       // If user has login
       if (response.status === "connected") {
         // showDialogue
@@ -64,112 +55,10 @@ function AllPosts() {
     })
   }
 
-  const {  isLoading: createPostLoading, mutate: createPostMutate } = useMutation({
-    mutationKey: ['create-post-facebook'],
-    mutationFn: async ({ pageId, phoneNumber, message, link }: { pageId: string, phoneNumber: string, message: string, link: string }) => {
-      const data = await fetch(`${endpoint}/createPostFacebook`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ pageId, phoneNumber, message, link }),
-      });
-
-      const result = await data.json();
-
-      if (!data.ok) throw new Error(result.message);
-
-      console.log(result);
-      return result;
-    },
-    onSuccess: (data) => {
-      // Create post success
-      console.log('create post success', `https://www.facebook.com/${data.page_post_id}`);
-      toast.success('Create post success!')
-      handleClose()
-      resetAllFields()
-    },
-    onError: (error: Error) => {
-      console.log('error', error);
-      toast.error(error.message);
-    },
-  });
-
-
-
-  const { isLoading: schedulePostLoading, mutate: schedulePostMutate } = useMutation({
-    mutationKey: ['schedule-post-facebook'],
-    mutationFn: async ({ pageId, phoneNumber, message, link, schedulePublishTime }: { pageId: string, phoneNumber: string, message: string, link: string, schedulePublishTime: string }) => {
-      const data = await fetch(`${endpoint}/createScheduledPostFacebook`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ pageId, phoneNumber, message, link, schedulePublishTime }),
-      });
-
-      const result = await data.json();
-
-      if (!data.ok) throw new Error(result.message);
-
-      console.log(result);
-      return result;
-    },
-    onSuccess: (data) => {
-      // Schedule Post success
-      console.log('schedule post success', `https://www.facebook.com/${data.page_post_id}`);
-
-      toast.success('Schedule post success!')
-      handleClose()
-      resetAllFields()
-    },
-    onError: (error: Error) => {
-      console.log('error', error);
-      toast.error(error.message);
-    },
-  });
-
-  const handleCreateScheduleFacebookPost = () => {
-    const phoneNumber = localStorage.getItem('social-phone-number')
-    if (!phoneNumber) return
-    // Check valid input
-    if (!pageId || !message || (scheduleOption === "schedule" && !schedulePublishTime)) {
-      toast.error('Please fill all fields');
-      return
-    }
-    // Call API based on user schedule option
-    scheduleOption === 'now' ?
-      createPostMutate({ pageId, phoneNumber, message, link })
-      :
-      schedulePostMutate({ pageId, phoneNumber, message, link, schedulePublishTime })
-  }
-
-  const { isLoading } = useQuery<any, Error, [FacebookPostsResponse, { favorite_social_post : string[]}], string[]>({
+  // Query to get all posts
+  const { refetch: refetchGetPosts } = useQuery<any, Error, [FacebookPostsResponse, { favorite_social_post: string[] }], string[]>({
     queryKey: ['get-fb-posts'],
-    queryFn: async () => {
-      const phoneNumber = localStorage.getItem('social-phone-number')
-      // Create promise to get facebook posts
-      const getPostFb = fetch(`${endpoint}/getPostFacebook?phoneNumber=${phoneNumber}`, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-        }
-      });
-      // Create promise to get favorite posts ids
-      const getFavoritePost = fetch(`${endpoint}/getFavoriterPosts?phoneNumber=${phoneNumber}`, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-        }
-      });
-      // Wait for all promises to resolve
-      const data = await Promise.all([getPostFb, getFavoritePost])
-      const resolvedData = await Promise.all(data.map((res) => res.json()));
-
-      console.log(resolvedData);
-      return resolvedData;
-
-    },
+    queryFn: fetchPostFacebook,
     onSuccess: (data) => {
       // [{success, posts: []}, {favorite_social_post}] = data
       const [postsResponse, favoritePostsResponse] = data
@@ -177,113 +66,127 @@ function AllPosts() {
       // merge to get a list of posts with favorite field
       const fbPostsWithLike = postsResponse.posts.map((post) => ({ ...post, is_favorite: fav_posts_set.has(post.id) }))
       // set posts to state
+      ref.current = fbPostsWithLike
       setPosts(fbPostsWithLike)
     },
     onError: (error: Error) => {
       console.log('error', error);
     },
-    enabled: userManagedPages.length > 0,
+    enabled: userManagedPages.length > 0, // only fetch when user has managed pages
     refetchOnWindowFocus: false,
   })
 
+  //---------------------------SEARCH-----------------------------------
+  const [favoriteOnly, setFavoriteOnly] = useState(false)
+
+  const handleFilter = () => {
+    const currentList = ref.current
+    let newLists = currentList
+    if (searchInput) {
+      newLists = currentList.filter((post) => post?.message?.toLowerCase().includes(searchInput.toLowerCase()))
+    }
+    if (favoriteOnly) {
+      newLists = newLists.filter((post) => post.is_favorite)
+    }
+    if (pageId) {
+      newLists = newLists.filter((post) => post.from.id === pageId)
+    }
+    if (timeOption) {
+      const { startTime, endTime } = getTimeRangeFromOptions(timeOption)
+      newLists = newLists.filter((post) => {
+        const postTime = new Date(post.created_time)
+        // Check if the postTime is within the specified range
+        return postTime >= startTime && postTime <= endTime;
+      });
+    }
+    setPosts(newLists)
+
+  }
+
+  const resetFilter = () => {
+    setSearchInput('')
+    setPageId('')
+    setTimeOption('')
+    setPosts(ref.current)
+  }
+
+
   return (
-    <div>
+    <Box sx={{ minHeight: '100vh', width: '100%' }}>
       <Stack
-        justifyContent="space-between"
+        justifyContent="flex-end"
         direction={'row'}
         spacing={2}
       >
-        Search
+        {/* create post button*/}
         <Button variant="contained" onClick={handleShowDialogue}>Create Post Facebook</Button>
       </Stack>
-      {/* POSTS */}
-      {isLoading && 'Loading'}
-      <Stack
-        useFlexGap flexWrap="wrap"
-        justifyContent="space-around"
-        direction={{ xs: 'column', sm: 'row' }}
-        spacing={2}
-      >
-        {posts.length > 0 && posts?.map(post =>
-          <PostCard key={post.id} postData={post} />
-        )}
-      </Stack>
 
-      {/* DIALOGUE */}
-      <div>
-        <Dialog open={open} onClose={handleClose}>
-          <DialogTitle>Create/ Schedule Facebook Post</DialogTitle>
-          <DialogContent>
-            <DialogContentText style={{ marginBottom: "20px" }}>
-              Enter fields below to create/ schedule your facebook post.
-            </DialogContentText>
-            {userManagedPages.length > 0 &&
-              <FormControl sx={{ my: 1, minWidth: 200 }}>
-                <InputLabel id="demo-simple-select-label">Choose Pages</InputLabel>
-                <Select
-                  value={pageId}
-                  onChange={(e) => setPageId(e.target.value)}
-                  label="Choose Pages"
-                  inputProps={{ 'aria-label': 'Without label' }}
-                >
-                  {userManagedPages.map((page) => <MenuItem key={page.id} value={page.id}>{page.name}</MenuItem>)}
-                </Select>
-              </FormControl>}
-            <TextField
-              sx={{ my: 1 }}
-              multiline
-              required
-              id="post_details"
-              label="Post Details"
-              rows={4}
-              fullWidth
-              value={message}
-              onChange={(e) => setMessage(e.target.value)}
-            />
-            <br />
-            <TextField fullWidth sx={{ my: 1 }}
-              label="Link"
-              id="post_link"
-              value={link}
-              onChange={(e) => setLink(e.target.value)}
-            />
-            <FormControl sx={{ my: 1, minWidth: 200 }}>
-              <InputLabel id="demo-simple-select-label">Scheduling Options</InputLabel>
-              <Select
-                value={scheduleOption}
-                onChange={(e) => setScheduleOption(e.target.value as 'now' | 'schedule')}
-                label="Scheduling Options"
-                inputProps={{ 'aria-label': 'Without label' }}
-              >
-                <MenuItem value="now">Publish Now</MenuItem>
-                <MenuItem value="schedule">Schedule</MenuItem>
-              </Select>
-            </FormControl>
-            {scheduleOption === "schedule" && <>
-              <Typography variant="caption" display="block" gutterBottom>
-                Choose a time to pushlish your post, must be 10mins - 30days from now
-              </Typography>
-              <input
-                type="datetime-local"
-                id="meeting-time"
-                name="meeting-time"
-                value={schedulePublishTime}
-                onChange={(e) => {
-                  console.log(e.target.value)
-                  setSchedulePublishTime(e.target.value)
-                }}
-              />
-            </>}
-          </DialogContent>
-          <DialogActions>
-            <Button onClick={handleClose}>Cancel</Button>
-            <Button variant="contained"
-              disabled={createPostLoading || schedulePostLoading}
-              onClick={handleCreateScheduleFacebookPost}>{scheduleOption === "now" ? "Publish" : "Schedule"}</Button>
-          </DialogActions>
-        </Dialog>
-      </div>
-    </div>
+      {/* --------------FILTER SECTION----------------- */}
+      {/* --by message-- */}
+      <TextField sx={{ my: 1 }}
+        label="Search by post message"
+        id="Search"
+        value={searchInput}
+        onChange={(e) => { setSearchInput(e.target.value) }}
+      />
+
+      {/* -- by pages-- */}
+      <FormControl sx={{ m: 1, minWidth: 200 }}>
+        <InputLabel id="demo-simple-select-label">Choose Pages</InputLabel>
+        <Select
+          value={pageId}
+          onChange={(e) => { setPageId(e.target.value) }}
+          label="Choose Pages"
+          inputProps={{ 'aria-label': 'Without label' }}
+        >
+          {userManagedPages.map((page) => <MenuItem key={page.id} value={page.id}>{page.name}</MenuItem>)}
+        </Select>
+      </FormControl>
+
+      {/* --by date-- */}
+      <FormControl sx={{ m: 1, minWidth: 200 }}>
+        <InputLabel id="demo-simple-select-label">Choose Time</InputLabel>
+        <Select
+          value={timeOption}
+          onChange={(e) => { setTimeOption(e.target.value) }}
+          label="Choose Time"
+          inputProps={{ 'aria-label': 'Without label' }}
+        >
+          <MenuItem value={TimeOptions.today}>Today</MenuItem>
+          <MenuItem value={TimeOptions.thisWeek}>This week</MenuItem>
+          <MenuItem value={TimeOptions.thisMonth}>This month</MenuItem>
+          <MenuItem value={TimeOptions.thisYear}>This year</MenuItem>
+        </Select>
+      </FormControl>
+
+      {/* -- by favorite post-- */}
+      <FormGroup sx={{ m: 1, maxWidth: 300 }}>
+        <FormControlLabel control={<Switch onChange={(e) => {
+          setFavoriteOnly(e.target.checked)
+        }} />} label="Show Favorite Posts Only" />
+      </FormGroup>
+
+      {/* --buttons-- */}
+      <Button variant="contained" onClick={handleFilter}>FILTER</Button>
+      <Button onClick={resetFilter} sx={{ ml: 1 }}>Clear All</Button>
+
+      {/* --------------POSTS----------------- */}
+      <Grid container spacing={2} sx={{ mt: 2 }} >
+        {posts.length > 0 && posts?.map(post =>
+          <Grid key={post.id} item xs={12} sm={6} md={4} >
+            <PostCard postData={post} refetchGetPosts={refetchGetPosts} />
+          </Grid>
+        )}
+      </Grid>
+
+      {/* ------------- CREATE POST DIALOGUE---------------- */}
+      <CreatePostDialogue
+        open={open}
+        handleClose={handleClose}
+        refetchGetPosts={refetchGetPosts}
+      />
+    </Box>
   )
 }
 

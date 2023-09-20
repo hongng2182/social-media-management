@@ -52,4 +52,20 @@ export interface Image {
 interface PostCreator {
   name: string
   id: string
+  picture: {
+    data: {
+      height: number,
+      is_silhouette: boolean,
+      url: string,
+      width: number
+    }
+  },
+}
+
+export enum TimeOptions {
+  today = 'today',
+  thisWeek = 'thisWeek',
+  thisMonth = 'thisMonth',
+  thisYear = 'thisYear',
+  allTime = ''
 }

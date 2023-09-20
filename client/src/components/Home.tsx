@@ -5,7 +5,12 @@ import PhoneInput from 'react-phone-input-2';
 import 'react-phone-input-2/lib/style.css';
 import Button from '@mui/material/Button';
 import toast from 'react-hot-toast';
-import { endpoint } from '../utils/constant';
+import Avatar from '@mui/material/Avatar';
+import TextField from '@mui/material/TextField';
+import Box from '@mui/material/Box';
+import Typography from '@mui/material/Typography';
+import Container from '@mui/material/Container';
+import { fetchValidateAccessCode, fetchCreateNewAccessCode } from '../apis';
 
 function Home() {
   const navigate = useNavigate();
@@ -16,61 +21,24 @@ function Home() {
 
   const { data: createAccessCode, mutate } = useMutation({
     mutationKey: ['create-access-code'],
-    mutationFn: async (phoneNumber: string) => {
-      const data = await fetch(`${endpoint}/CreateNewAccessCode`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ phoneNumber }),
-      });
-
-      const result = await data.json();
-
-      if (!data.ok) throw new Error(result.message);
-
-      console.log(result);
-      return result;
-    },
+    mutationFn: fetchCreateNewAccessCode,
     onSuccess: () => {
-      console.log('success');
       setshowVerify(false);
     },
     onError: (error: Error) => {
-      console.log('error', error);
       toast.error(error.message);
     },
   });
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const { data: validateCode, mutate: mutateValidateCode } = useMutation({
+  const { mutate: mutateValidateCode } = useMutation({
     mutationKey: ['validate-access-code'],
-    mutationFn: async ({
-      phoneNumber,
-      accessCode,
-    }: {
-      phoneNumber: string,
-      accessCode: string
-    }) => {
-      const data = await fetch(`${endpoint}/ValidateAccessCode`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ phoneNumber, accessCode }),
-      });
-      const result = await data.json();
-      if (!data.ok) throw new Error(result.message);
-      console.log(result);
-      return result;
-    },
+    mutationFn: fetchValidateAccessCode,
     onSuccess: () => {
-      toast.success('Welcome to Social App');
+      toast.success('Welcome to SOCIAL SYNC');
       localStorage.setItem('social-phone-number', phoneNumber);
       return navigate("/dashboard");
     },
     onError: (error: Error) => {
-      console.log(error);
       toast.error(error.message);
     },
   });
@@ -88,41 +56,63 @@ function Home() {
   };
 
   return (
-    <div>
-      {showVerify && (
-        <form onSubmit={handleSendVerificationCode}>
-          <PhoneInput
-            country={'vn'}
-            onlyCountries={['us', 'vn']}
-            value={phoneNumber}
-            onChange={(phone) => setPhoneNumber(phone)}
-          />
-          <Button type="submit" variant="contained">
-            Send Verification Code
-          </Button>
-        </form>
-      )}
-      <br />
-      {createAccessCode?.success && (
-        <>
-          <form onSubmit={handleValidateAccessCode}>
-            <p>
-              Social App has sent an OTP code to: {''}
-              {createAccessCode?.message}
-            </p>
-            <label htmlFor="access-code">Please enter your code here:</label>
-            <input
-              type="text"
-              name="access-code"
-              onChange={(e) => setAccessCode(e.target.value)}
-            />
-            <Button type="submit" variant="contained">
-              Submit
-            </Button>
-          </form>
-        </>
-      )}
-    </div>
+    <Container component="main" maxWidth="xs">
+      <Box
+        sx={{
+          marginTop: 12,
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          gap: 2
+        }}
+      >
+        <Avatar sx={{ m: 1, bgcolor: 'secondary.main' }}>
+        </Avatar>
+        <Typography component="h1" variant="h5">
+          Welcome to SOCIALSYNC
+        </Typography>
+        <Box sx={{ mt: 1, width: 350 }}>
+          {showVerify && (
+            <Box sx={{ width: '100%' }} >
+              <Typography sx={{ display: 'block' }} textAlign="center" variant="caption">
+                Enter a mobile phone number that you have access to.
+                <br />This number will be used to log in to SOCIALSYNC App.
+              </Typography>
+              <form onSubmit={handleSendVerificationCode} style={{ marginTop: '30px' }}>
+                <PhoneInput
+                  inputStyle={{ width: '100%' }}
+                  country={'vn'}
+                  onlyCountries={['us', 'vn']}
+                  value={phoneNumber}
+                  onChange={(phone) => setPhoneNumber(phone)}
+                />
+                <Button sx={{ mt: 2 }} fullWidth type="submit" variant="contained">
+                  Send Verification Code
+                </Button>
+              </form>
+            </Box>
+          )}
+          {createAccessCode?.success && (
+            <form onSubmit={handleValidateAccessCode}>
+              <Typography variant="body2" textAlign="center">
+                SOCIALSYNC App has sent an OTP code to: {''}
+                <b>{createAccessCode?.message}</b>
+              </Typography>
+              <TextField
+                fullWidth
+                name="access-code"
+                label="Enter your code here"
+                variant="standard"
+                onChange={(e) => setAccessCode(e.target.value)}
+              />
+              <Button sx={{ mt: 2 }} fullWidth type="submit" variant="contained">
+                Submit
+              </Button>
+            </form>
+          )}
+        </Box>
+      </Box>
+    </Container>
   );
 }
 

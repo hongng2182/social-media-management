@@ -16,7 +16,7 @@ export const fbLogin = () => new Promise<FbAuthresponse>((resolve, reject) => {
       reject(response)
     }
   },
-    { scope: 'pages_manage_posts,pages_show_list,public_profile,pages_read_engagement,business_management' })
+    { scope: 'pages_manage_posts,pages_show_list,public_profile,pages_read_engagement' })
 })
 
 export const getFacebookLoginStatus = () => new Promise<FbAuthresponse>((resolve, reject) => {

@@ -52,7 +52,6 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
     )
 
     const memoizedState = useMemo(() => state, [state])
-    console.log('memoizedState', memoizedState)
 
     return (
         <DashboardContext.Provider

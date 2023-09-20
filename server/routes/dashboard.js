@@ -1,4 +1,4 @@
-const { saveFacebookManagedPages, getPageAccessToken, saveFavoritePosts, getFavoritePosts } = require('../config/firebase')
+const { saveFacebookManagedPages, getPageAccessToken, saveFavoritePosts, getFavoritePosts, getListPagesAccessToken } = require('../config/firebase')
 const { transformArrayToObject } = require('../utils')
 
 const express = require("express");
@@ -86,110 +86,155 @@ router.post('/getUserPages', async (req, res) => {
 
 router.post('/createPostFacebook', async (req, res) => {
   // Destructure params
-  const { pageId, phoneNumber, message, link } = req.body
+  const { selectedPages, phoneNumber, message, link } = req.body
 
-  // Retrieve db to get pageAccesstoken
-  const pageAccessToken = await getPageAccessToken(phoneNumber, pageId)
+  // create array of promises to call FB API to create post simultaneously
+  const promisesArray = selectedPages.map(async (selectedPage) => {
+    const pageId = selectedPage.id
 
-  // Call FB API to create post
-  const params = {
-    message: message ? `&message=${message}` : '',
-    link: link ? `&link=${link}` : '',
-  }
+    // Retrieve db to get pageAccesstoken
+    const pageAccessToken = await getPageAccessToken(phoneNumber, pageId)
 
-  const endpoint = `https://graph.facebook.com/${pageId}/feed?${params.message}${params.link}&access_token=${pageAccessToken}`
+    // Create different endpoint for each page
+    const params = {
+      message: message ? `&message=${message}` : '',
+      link: link ? `&link=${link}` : '',
+    }
 
-  const data = await fetch(endpoint, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-  });
+    const endpoint = `https://graph.facebook.com/${pageId}/feed?${params.message}${params.link}&access_token=${pageAccessToken}`
 
-  const result = await data.json();
+    // return fetch promise
+    return fetch(endpoint, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+  })
 
-  // If api call success [success will return id of post just create {"id": "{page-post-id}"}]
-  if (data.ok && result.id) {
-    // return success
-    res.status(200).json({
-      success: true,
-      page_post_id: result.id
+  // wait for all promises to resolve
+  Promise.all(promisesArray)
+    .then((data) => {
+      Promise.all(data.map((res) => res.json()))
+        .then((resolvedData) => {
+          // FB API return array of object [{id: {page-post-id}}] if success, [{error: {message, type, code}}] if error
+          const isError = resolvedData.some((data) => data.error)
+          console.log(resolvedData)
+          // check if any error
+          if (isError) {
+            res.status(500).json({
+              success: false,
+              message: "Error creating post!"
+            })
+          } else {
+            // return success
+            res.status(200).json({
+              success: true,
+              postIds: resolvedData
+            })
+          }
+        })
     })
-  } else {
-    res.status(500).json({
-      success: false,
-      message: "Error creating post. Please try again."
+    .catch((err) => {
+      console.log(err)
+      res.status(500).json({
+        success: false,
+        message: "Error creating post!"
+      })
     })
-  }
+
 })
 
 router.post('/createScheduledPostFacebook', async (req, res) => {
-  // Desctructure params
-  const { pageId, phoneNumber, message, link, schedulePublishTime } = req.body
+  // Destructure params
+  const { selectedPages, phoneNumber, message, link, schedulePublishTime } = req.body
 
-  // Retrieve db to get pageAccesstoken
-  const pageAccessToken = await getPageAccessToken(phoneNumber, pageId)
+  // create array of promises to call FB API to create post simultaneously
+  const promisesArray = selectedPages.map(async (selectedPage) => {
+    const pageId = selectedPage.id
 
-  // Call API to shedule post
-  const params = {
-    message: message ? `&message=${message}` : '',
-    link: link ? `&link=${link}` : '',
-  }
-  const endpoint = `https://graph.facebook.com/${pageId}/feed?published=false${params.message}${params.link}&scheduled_publish_time=${schedulePublishTime}&access_token=${pageAccessToken}`
+    // Retrieve db to get pageAccesstoken
+    const pageAccessToken = await getPageAccessToken(phoneNumber, pageId)
 
-  const data = await fetch(endpoint, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-  });
+    // Create different endpoint for each page
+    const params = {
+      message: message ? `&message=${message}` : '',
+      link: link ? `&link=${link}` : '',
+    }
 
-  const result = await data.json();
+    const endpoint = `https://graph.facebook.com/${pageId}/feed?published=false${params.message}${params.link}&scheduled_publish_time=${schedulePublishTime}&access_token=${pageAccessToken}`
 
-  // If api call success [success will return id of post just create {"id": {page-post-id}"}]
-  if (data.ok && result.id) {
-    // return success
-    res.status(200).json({
-      success: true,
-      page_post_id: result.id
+    // return fetch promise
+    return fetch(endpoint, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+  })
+
+  // wait for all promises to resolve
+  Promise.all(promisesArray)
+    .then((data) => {
+      Promise.all(data.map((res) => res.json()))
+        .then((resolvedData) => {
+          // FB API return array of object [{id: {page-post-id}}] if success, [{error: {message, type, code}}] if error
+          const isError = resolvedData.some((data) => data.error)
+          console.log(resolvedData)
+          // check if any error
+          if (isError) {
+            res.status(500).json({
+              success: false,
+              message: "Error scheduling post!"
+            })
+          } else {
+            // return success
+            res.status(200).json({
+              success: true,
+              postIds: resolvedData
+            })
+          }
+        })
     })
-  } else {
-    res.status(500).json({
-      success: false,
-      message: "Error creating scheduled post. Please try again."
+    .catch((err) => {
+      console.log(err)
+      res.status(500).json({
+        success: false,
+        message: "Error scheduling post!"
+      })
     })
-  }
-
 })
 
 router.get('/getPostFacebook', async (req, res) => {
   // Desctructure params
   const { phoneNumber } = req.query
-  const pageId = "143794288806196"
 
-  // Retrieve db to get pageAccesstoken of phoneNumber
-  const pageAccessToken = await getPageAccessToken(phoneNumber, pageId)
-  console.log('pageAccessToken', pageAccessToken)
+  // list of pages id {id: {name, access_token}, id: {name, access_token}}
+  const pages = await getListPagesAccessToken(phoneNumber)
 
-  // Call API to get FB posts
-  const endpoint = `https://graph.facebook.com/${pageId}/feed?fields=is_published,id,message,attachments{url,media_type,unshimmed_url, media},created_time,from,sheduled_publish_time&access_token=${pageAccessToken}`
-  const data = await fetch(endpoint, {
-    method: 'GET',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-  });
+  const promisesArray = Object.keys(pages).map((key) => {
+    const pageId = key
+    const pageAccessToken = pages[pageId].access_token
 
-  const result = await data.json();
-  console.log('Facebook posts data', result)
-  // if api call success 
-  if (data.ok) {
-    // return { success: true }
-    res.status(200).json({
-      success: true,
-      posts: result.data
-    })
-  }
+    const endpoint = `https://graph.facebook.com/${pageId}/feed?fields=is_published,id,message,attachments{url,media_type,unshimmed_url, media},created_time,from{id,name,picture},sheduled_publish_time&access_token=${pageAccessToken}`
+
+    return fetch(endpoint, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+  })
+
+  const data = await Promise.all(promisesArray)
+  // [{data: {}}, {data: {}}]
+  const resolvedData = await Promise.all(data.map((res) => res.json()));
+
+  res.status(200).json({
+    success: true,
+    posts: resolvedData.map(data => data.data).flat()
+  })
+
 })
 
 router.post('/likeSocialPost', async (req, res) => {
@@ -199,7 +244,7 @@ router.post('/likeSocialPost', async (req, res) => {
   // Save to db at favorite_social_post
   saveFavoritePosts(phone_number, social_post_id)
 
- // return success
+  // return success
   res.status(200).json({
     success: true,
   })

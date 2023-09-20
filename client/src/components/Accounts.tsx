@@ -2,36 +2,25 @@ import React from 'react'
 import Button from '@mui/material/Button';
 import { useMutation } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
-import { endpoint } from '../utils/constant';
+import Box from '@mui/material/Box';
+import Card from '@mui/material/Card';
+import CardActions from '@mui/material/CardActions';
+import CardContent from '@mui/material/CardContent';
+import Typography from '@mui/material/Typography';
 import { fbLogin } from '../utils/facebook-login-sdk';
 import { useDashboardState } from '../context';
 import { setUserManagedPages } from '../action';
+import { fetchUserPages, fetchLoginFacebook } from '../apis';
 
 function Accounts() {
   const { dispatch } = useDashboardState()
+
   const { mutate: userPagesMutate } = useMutation({
     mutationKey: ['get-user-pages'],
-    mutationFn: async ({ userID, accessToken, phoneNumber }: { userID: string, accessToken: string, phoneNumber: string }) => {
-      const data = await fetch(`${endpoint}/getUserPages`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ userID, accessToken, phoneNumber }),
-      });
-
-      const result = await data.json();
-
-      if (!data.ok) throw new Error(result.message);
-
-      console.log(result);
-      return result;
-    },
+    mutationFn: fetchUserPages,
     onSuccess: (data) => {
       // Save user pages to pages state
-      console.log('pages', data);
       dispatch(setUserManagedPages(data.pages))
-      // setPages(data.pages)
     },
     onError: (error: Error) => {
       console.log('error', error);
@@ -41,21 +30,7 @@ function Accounts() {
 
   const { data: loginData, mutate: logInMutate } = useMutation({
     mutationKey: ['login-facebook'],
-    mutationFn: async ({ userID, accessToken }: { userID: string, accessToken: string }) => {
-      const data = await fetch(`${endpoint}/loginFacebook`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ userID, accessToken }),
-      });
-
-      const result = await data.json();
-
-      if (!data.ok) throw new Error(result.message);
-
-      return result;
-    },
+    mutationFn: fetchLoginFacebook,
     onSuccess: (_, { userID, accessToken }) => {
       // call get user pages and save in global state
       const phoneNumber = localStorage.getItem('social-phone-number')
@@ -80,9 +55,21 @@ function Accounts() {
   }
 
   return (
-    <div>Facebook:
-      <Button variant="contained" onClick={handleSignInWithFacebook}>{loginData?.success ? 'Connected' : 'Add'}</Button>
-    </div>
+    <Box sx={{ height: '100vh' }}>
+      <Card sx={{ width: 275 }}>
+        <CardContent>
+          <Typography variant="h5" component="div">
+            Facebook
+          </Typography>
+          <Typography sx={{ fontSize: 14, mt: 1 }} color="text.secondary" gutterBottom>
+            Manage Facebook Pages.
+          </Typography>
+        </CardContent>
+        <CardActions sx={{ display: 'flex', justifyContent: 'flex-end' }}>
+          <Button variant="contained" onClick={handleSignInWithFacebook}>{loginData?.success ? 'Connected' : 'Add'}</Button>
+        </CardActions>
+      </Card>
+    </Box>
   )
 }
 

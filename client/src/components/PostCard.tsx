@@ -8,46 +8,36 @@ import Avatar from '@mui/material/Avatar';
 import IconButton from '@mui/material/IconButton';
 import Typography from '@mui/material/Typography';
 import Link from '@mui/material/Link';
-import { red } from '@mui/material/colors';
 import { FavoriteIcon } from './icons';
 import { PostDetailsWithLike } from '../types';
 import { useMutation } from '@tanstack/react-query';
-import { endpoint } from '../utils/constant';
+import { fetchLikeSocialPosts } from '../apis';
 import toast from 'react-hot-toast';
 
+type PostCardProps = { postData: PostDetailsWithLike, refetchGetPosts: () => {} }
 
-function PostCard({ postData }: { postData: PostDetailsWithLike }) {
-  const { message, id: social_post_id, attachments, created_time, from: { name: pageName }, is_favorite } = postData
+function PostCard({ postData, refetchGetPosts }: PostCardProps) {
+  // Destructuring postData
+  const { message, id: social_post_id, attachments, created_time, from: { name: pageName, picture: { data: { url: avatarUrl } } }, is_favorite } = postData
+
+  // Convert created_time to date string
   const dateTime = new Date(created_time)
   const dateTimeString = dateTime.toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' })
+
+  // Get all photos and links from attachments
   const postPhotos = attachments?.data?.filter((attachment => attachment.media_type === "photo"))
   const postLinks = attachments?.data?.filter((attachment => attachment.media_type === "link"))
 
+  // Create like post state
   const [like, setLike] = useState(is_favorite)
 
+  // like post mutation
   const { mutate: mutateLikePost } = useMutation({
     mutationKey: ['like-social-post'],
-    mutationFn: async ({ social_post_id, phone_number }: { social_post_id: string, phone_number: string }) => {
-      const data = await fetch(`${endpoint}/likeSocialPost`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ social_post_id, phone_number }),
-      });
-
-      const result = await data.json();
-
-      if (!data.ok) throw new Error(result.message);
-
-      console.log(result);
-      return result;
-    },
-    onSuccess: (data) => {
-      console.log('like post success');
+    mutationFn: fetchLikeSocialPosts,
+    onSuccess: () => {
       setLike(true)
-      // onSuccess: fill icon with red color
-
+      toast.success('Successfully like post!')
     },
     onError: (error: Error) => {
       console.log('error', error);
@@ -61,20 +51,21 @@ function PostCard({ postData }: { postData: PostDetailsWithLike }) {
     if (!phone_number) return
     // Make call to /likeSocialPost : POST (phone_number, social_post_id)
     mutateLikePost({ phone_number, social_post_id })
+    // Refetch getFacebookPosts query
+    refetchGetPosts()
   }
 
   return (
-    <Card sx={{ maxWidth: 345 }}>
+    <Card sx={{ bgcolor: '#F3F6F9' }}>
       <CardHeader
         avatar={
-          <Avatar sx={{ bgcolor: red[500] }} aria-label="avatar">
-            {pageName.charAt(0).toUpperCase()}
-          </Avatar>
+          <Avatar sx={{ bgcolor: `#9c27b0` }} aria-label="avatar" src={avatarUrl} alt="avatar" />
         }
         title={pageName}
         subheader={dateTimeString}
       />
       {postPhotos && postPhotos.length > 0 && postPhotos?.map((photo, index) => <CardMedia
+        sx={{ maxHeight: 200 }}
         key={index}
         component="img"
         height={photo?.media?.image.height}

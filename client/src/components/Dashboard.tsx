@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import Box from '@mui/material/Box';
 import Tabs from '@mui/material/Tabs';
 import Tab from '@mui/material/Tab';
+import Typography from '@mui/material/Typography';
+import AppBar from '@mui/material/AppBar';
 import Accounts from './Accounts';
 import AllPosts from './AllPosts';
 
@@ -17,6 +19,7 @@ function TabPanel(props: TabPanelProps) {
 
   return (
     <div
+      style={{ width: '100%' }}
       role="tabpanel"
       hidden={value !== index}
       id={`vertical-tabpanel-${index}`}
@@ -41,14 +44,26 @@ function Dashboard() {
   };
 
   return (
-    <Box sx={{ flexGrow: 1, bgcolor: 'background.paper', display: 'flex', height: 224 }}>
-      <Tabs value={value}
-        onChange={handleChange}
-        orientation="vertical"
-        sx={{ borderRight: 1, borderColor: 'divider' }}>
-        <Tab label="Accounts" />
-        <Tab label="All Posts" />
-      </Tabs>
+    <Box sx={{ flexGrow: 1, bgcolor: 'background.paper', display: 'flex' }}>
+      <AppBar position="static" sx={{ borderRight: 1, borderColor: 'divider', maxWidth: 200 }}>
+        <Typography
+          variant="h6"
+          component="div"
+          sx={{ textAlign: 'center', p: 2}}
+        >
+          SOCIALSYNC
+        </Typography>
+        <Tabs value={value}
+          onChange={handleChange}
+          orientation="vertical"
+          variant="fullWidth"
+          indicatorColor="secondary"
+          textColor="inherit"
+          sx={{ borderRight: 1, borderColor: 'divider', minWidth: 200 }}>
+          <Tab label="Accounts" />
+          <Tab label="All Posts" />
+        </Tabs>
+      </AppBar>
       <TabPanel value={value} index={0}>
         <Accounts />
       </TabPanel>
@@ -56,6 +71,7 @@ function Dashboard() {
         <AllPosts />
       </TabPanel>
     </Box>
+
   );
 }
 
