@@ -21,7 +21,6 @@
 
 #### Login Page
 ![](screenshots/login-page.jpg)
-![](screenshots/login-page-2.jpg)
 
 #### All posts
 ![](screenshots/all-posts.jpg)
